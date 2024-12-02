@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy Summarizer</title>
+  <script src="https://unpkg.com/compromise"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f9f9f9;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      background-color: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    h1 {
+      text-align: center;
+    }
+    textarea {
+      width: 100%;
+      height: 200px;
+      margin: 10px 0;
+      padding: 10px;
+      font-size: 16px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    button {
+      background-color: #007BFF;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:disabled {
+      background-color: #cccccc;
+    }
+    .summary {
+      margin-top: 20px;
+      background-color: #f4f4f4;
+      padding: 15px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Privacy Policy Summarizer</h1>
+    <textarea id="policyInput" placeholder="Paste privacy policy here..."></textarea>
+    <button id="summarizeBtn">Summarize</button>
+    <div id="summaryOutput" class="summary"></div>
+  </div>
+
+  <script>
+    const summarizeBtn = document.getElementById('summarizeBtn');
+    const policyInput = document.getElementById('policyInput');
+    const summaryOutput = document.getElementById('summaryOutput');
+
+    summarizeBtn.addEventListener('click', () => {
+      const text = policyInput.value.trim();
+      if (!text) {
+        summaryOutput.innerHTML = "<p>Please paste a privacy policy to summarize.</p>";
+        return;
+      }
+
+      const summary = generateSummary(text);
+      summaryOutput.innerHTML = `<h3>Summary:</h3><p>${summary}</p>`;
+    });
+
+    function generateSummary(text) {
+      const doc = nlp(text);
+      const sentences = doc.sentences().out('array');
+      
+      const keywords = doc
+        .terms()
+        .out('frequency')
+        .filter(term => term.count > 1)
+        .map(term => term.normal)
+        .slice(0, 10);
+
+      const rankedSentences = sentences.map(sentence => {
+        const sentenceDoc = nlp(sentence);
+        let score = 0;
+        
+        keywords.forEach(keyword => {
+          if (sentenceDoc.has(keyword)) score++;
+        });
+
+        return { sentence, score };
+      });
+
+      rankedSentences.sort((a, b) => b.score - a.score);
+
+      const summarySentences = rankedSentences.slice(0, 3).map(s => s.sentence);
+      
+      return summarySentences.join(' ');
+    }
+  </script>
+</body>
+</html>
