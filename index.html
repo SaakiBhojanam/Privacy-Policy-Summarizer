@@ -6,11 +6,13 @@
   <title>Privacy Policy Summarizer</title>
   <script src="https://unpkg.com/compromise"></script>
   <style>
+    /* Basic styling */
     body {
       font-family: Arial, sans-serif;
       margin: 0;
       padding: 20px;
       background-color: #f9f9f9;
+      line-height: 1.6;
     }
     .container {
       max-width: 800px;
@@ -22,6 +24,7 @@
     }
     h1 {
       text-align: center;
+      color: #333;
     }
     textarea {
       width: 100%;
@@ -31,17 +34,23 @@
       font-size: 16px;
       border: 1px solid #ccc;
       border-radius: 4px;
+      resize: vertical;
     }
     button {
+      display: block;
+      width: 100%;
       background-color: #007BFF;
       color: white;
       border: none;
       padding: 10px 20px;
       border-radius: 4px;
       cursor: pointer;
+      font-size: 16px;
+      margin-top: 10px;
     }
     button:disabled {
       background-color: #cccccc;
+      cursor: not-allowed;
     }
     .summary {
       margin-top: 20px;
@@ -49,37 +58,121 @@
       padding: 15px;
       border: 1px solid #ccc;
       border-radius: 4px;
+      line-height: 1.4;
+    }
+    .instructions {
+      font-size: 14px;
+      color: #555;
+      margin-bottom: 10px;
+    }
+    .error {
+      color: red;
+      font-size: 14px;
+      margin-top: 5px;
+    }
+    .hidden {
+      display: none;
+    }
+    .keywords {
+      margin-top: 20px;
+      font-size: 14px;
+      color: #333;
+    }
+    .loader {
+      margin: 20px auto;
+      border: 4px solid #f3f3f3;
+      border-radius: 50%;
+      border-top: 4px solid #007BFF;
+      width: 40px;
+      height: 40px;
+      animation: spin 2s linear infinite;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
     }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>Privacy Policy Summarizer</h1>
+    <p class="instructions">Paste the privacy policy you want to summarize in the box below and click "Summarize" to generate a brief summary of key points.</p>
+    
+    <!-- Input area for the privacy policy -->
     <textarea id="policyInput" placeholder="Paste privacy policy here..."></textarea>
+
+    <!-- Button to trigger the summarization -->
     <button id="summarizeBtn">Summarize</button>
-    <div id="summaryOutput" class="summary"></div>
+
+    <!-- Error message placeholder -->
+    <p id="errorMsg" class="error hidden">Please paste a privacy policy to summarize.</p>
+
+    <!-- Loader for processing state -->
+    <div id="loader" class="loader hidden"></div>
+
+    <!-- Output area for the summary -->
+    <div id="summaryOutput" class="summary hidden">
+      <h3>Summary:</h3>
+      <p id="summaryText"></p>
+    </div>
+
+    <!-- Display extracted keywords -->
+    <div id="keywords" class="keywords hidden">
+      <h4>Key Terms:</h4>
+      <ul id="keywordsList"></ul>
+    </div>
   </div>
 
   <script>
     const summarizeBtn = document.getElementById('summarizeBtn');
     const policyInput = document.getElementById('policyInput');
     const summaryOutput = document.getElementById('summaryOutput');
+    const summaryText = document.getElementById('summaryText');
+    const errorMsg = document.getElementById('errorMsg');
+    const loader = document.getElementById('loader');
+    const keywordsDiv = document.getElementById('keywords');
+    const keywordsList = document.getElementById('keywordsList');
 
+    // Add event listener to summarize button
     summarizeBtn.addEventListener('click', () => {
       const text = policyInput.value.trim();
+
+      // Input validation
       if (!text) {
-        summaryOutput.innerHTML = "<p>Please paste a privacy policy to summarize.</p>";
+        errorMsg.classList.remove('hidden');
+        summaryOutput.classList.add('hidden');
+        keywordsDiv.classList.add('hidden');
         return;
+      } else {
+        errorMsg.classList.add('hidden');
       }
 
-      const summary = generateSummary(text);
-      summaryOutput.innerHTML = `<h3>Summary:</h3><p>${summary}</p>`;
+      // Show loader during processing
+      loader.classList.remove('hidden');
+      summaryOutput.classList.add('hidden');
+      keywordsDiv.classList.add('hidden');
+
+      // Simulate processing delay
+      setTimeout(() => {
+        // Generate the summary
+        const summary = generateSummary(text);
+
+        // Display the summary
+        summaryText.innerHTML = summary;
+        summaryOutput.classList.remove('hidden');
+
+        // Display the keywords
+        const keywords = extractKeywords(text);
+        displayKeywords(keywords);
+
+        // Hide loader
+        loader.classList.add('hidden');
+      }, 1000);
     });
 
     function generateSummary(text) {
       const doc = nlp(text);
       const sentences = doc.sentences().out('array');
-      
       const keywords = doc
         .terms()
         .out('frequency')
@@ -90,7 +183,7 @@
       const rankedSentences = sentences.map(sentence => {
         const sentenceDoc = nlp(sentence);
         let score = 0;
-        
+
         keywords.forEach(keyword => {
           if (sentenceDoc.has(keyword)) score++;
         });
@@ -99,10 +192,31 @@
       });
 
       rankedSentences.sort((a, b) => b.score - a.score);
-
       const summarySentences = rankedSentences.slice(0, 3).map(s => s.sentence);
-      
-      return summarySentences.join(' ');
+
+      return summarySentences.length > 0
+        ? summarySentences.join(' ')
+        : 'No significant content found to summarize.';
+    }
+
+    function extractKeywords(text) {
+      const doc = nlp(text);
+      return doc
+        .terms()
+        .out('frequency')
+        .filter(term => term.count > 1)
+        .map(term => term.normal)
+        .slice(0, 10);
+    }
+
+    function displayKeywords(keywords) {
+      keywordsList.innerHTML = '';
+      keywords.forEach(keyword => {
+        const li = document.createElement('li');
+        li.textContent = keyword;
+        keywordsList.appendChild(li);
+      });
+      keywordsDiv.classList.remove('hidden');
     }
   </script>
 </body>
